@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Even Keel — Trading Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14171c;
+    --surface: #1b1f26;
+    --surface-alt: #20252d;
+    --border: #2a2f38;
+    --text-primary: #e8e6e1;
+    --text-secondary: #9aa1ac;
+    --text-muted: #666d78;
+    --accent: #5c9c8a;
+    --danger: #c0604a;
+    --danger-dim: rgba(192, 96, 74, 0.15);
+    --warning: #c9a227;
+    --warning-dim: rgba(201, 162, 39, 0.15);
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header + signature "keel line": stays flat when trading is disciplined,
+     tilts and shifts to amber as the tilt multiplier climbs. */
+  header { margin-bottom: 40px; }
+
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+
+  .tagline { color: var(--text-secondary); font-size: 13px; }
+
+  .keel {
+    margin-top: 20px;
+    height: 1px;
+    background: var(--accent);
+    transform-origin: left center;
+    transition: transform 1.2s ease, background 0.6s ease;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+
+  .metric-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+
+  .metric-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+
+  .panel-title { font-size: 13px; color: var(--text-secondary); margin: 0 0 14px; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  input, select {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 9px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+  }
+
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    background: var(--accent);
+    color: #0f1512;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  button:hover { opacity: 0.9; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+  th {
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 400;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 10px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  td.name-cell { font-family: 'IBM Plex Sans', sans-serif; }
+
+  .num { text-align: right; }
+
+  .pnl-pos { color: var(--accent); }
+  .pnl-neg { color: var(--danger); }
+
+  .tag {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .tag-fomo { background: var(--danger-dim); color: var(--danger); }
+  .tag-tilt { background: var(--warning-dim); color: var(--warning); }
+  .tag-none { color: var(--text-muted); }
+
+  .empty-state { text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px; }
+
+  footer { margin-top: 40px; color: var(--text-muted); font-size: 11px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <h1>Even keel</h1>
+      <span class="tagline">— a behavioral trading journal</span>
+    </div>
+    <div class="keel" id="keel-line"></div>
+  </header>
+
+  <section class="metrics">
+    <div class="metric">
+      <div class="metric-label">Composure rating</div>
+      <div class="metric-value" id="composure-val">—</div>
+      <div class="metric-note">Share of day trades that closed green</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">FOMO tax</div>
+      <div class="metric-value" id="fomo-val">—</div>
+      <div class="metric-note">Lost chasing a win, same day</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Tilt multiplier</div>
+      <div class="metric-value" id="tilt-val">—</div>
+      <div class="metric-note">Loss size after a prior loss</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="panel-title">Log a trade</p>
+    <div class="form-grid">
+      <input id="t-ticker" placeholder="Ticker" maxlength="8">
+      <input id="t-date" type="date">
+      <select id="t-type">
+        <option value="day">Day trade</option>
+        <option value="swing">Swing trade</option>
+        <option value="long">Long position</option>
+      </select>
+      <input id="t-qty" type="number" placeholder="Qty" min="0" step="1">
+      <input id="t-buy" type="number" placeholder="Buy $" min="0" step="0.01">
+      <input id="t-sell" type="number" placeholder="Sell $" min="0" step="0.01">
+    </div>
+    <button id="log-btn">Log trade</button>
+  </section>
+
+  <section class="panel">
+    <p class="panel-title">Trade history</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th><th>Date</th><th>Type</th>
+          <th class="num">Qty</th><th class="num">Buy</th><th class="num">Sell</th>
+          <th class="num">P&amp;L</th><th>Tag</th>
+        </tr>
+      </thead>
+      <tbody id="trades-body"></tbody>
+    </table>
+    <div class="empty-state" id="empty-state">No trades yet — log your first one above.</div>
+  </section>
+
+  <footer>Stored privately in this browser only — nothing leaves your device yet.</footer>
+
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'even-keel-trades';
+  let trades = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+  const fmt = n => '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+  }
+
+  function tagLabel(tag) {
+    if (tag === 'FOMO') return '<span class="tag tag-fomo">FOMO</span>';
+    if (tag === 'Tilt') return '<span class="tag tag-tilt">Tilt</span>';
+    return '<span class="tag tag-none">—</span>';
+  }
+
+  function computeAndRender() {
+    const withPnl = trades.map(t => ({...t, pnl: (t.sell - t.buy) * t.qty, tag: null}));
+    const dayTrades = withPnl.filter(t => t.type === 'day');
+
+    const byDate = {};
+    dayTrades.forEach(t => { (byDate[t.date] = byDate[t.date] || []).push(t); });
+
+    let fomoTax = 0;
+    const allLosses = [];
+    const lossesAfterLoss = [];
+
+    Object.values(byDate).forEach(group => {
+      let sawWin = false;
+      let prevLoss = false;
+      group.forEach(t => {
+        if (sawWin && t.pnl < 0) { t.tag = 'FOMO'; fomoTax += Math.abs(t.pnl); }
+        if (t.pnl < 0) {
+          allLosses.push(Math.abs(t.pnl));
+          if (prevLoss) { if (!t.tag) t.tag = 'Tilt'; lossesAfterLoss.push(Math.abs(t.pnl)); }
+        }
+        if (t.pnl > 0) sawWin = true;
+        prevLoss = t.pnl < 0;
+      });
+    });
+
+    const wins = dayTrades.filter(t => t.pnl > 0).length;
+    const composure = dayTrades.length ? Math.round(100 * wins / dayTrades.length) : null;
+    const avgAllLoss = allLosses.length ? allLosses.reduce((a,b)=>a+b,0) / allLosses.length : 0;
+    const avgTiltLoss = lossesAfterLoss.length ? lossesAfterLoss.reduce((a,b)=>a+b,0) / lossesAfterLoss.length : 0;
+    const tiltMultiplier = avgAllLoss > 0 ? avgTiltLoss / avgAllLoss : 1;
+
+    document.getElementById('composure-val').textContent = composure === null ? '—' : composure;
+    document.getElementById('fomo-val').textContent = fmt(fomoTax);
+    document.getElementById('tilt-val').textContent = tiltMultiplier.toFixed(1) + 'x';
+
+    const tiltDeg = Math.max(0, Math.min(tiltMultiplier - 1, 1)) * 4;
+    const keel = document.getElementById('keel-line');
+    keel.style.transform = 'rotate(' + tiltDeg + 'deg)';
+    keel.style.background = tiltMultiplier > 1.2 ? 'var(--warning)' : 'var(--accent)';
+
+    const merged = withPnl.map(t => {
+      const match = dayTrades.find(d => d.ticker===t.ticker && d.date===t.date && d.buy===t.buy && d.sell===t.sell && d.qty===t.qty);
+      return match || t;
+    });
+
+    const tbody = document.getElementById('trades-body');
+    const emptyState = document.getElementById('empty-state');
+    if (merged.length === 0) {
+      tbody.innerHTML = '';
+      emptyState.style.display = 'block';
+    } else {
+      emptyState.style.display = 'none';
+      tbody.innerHTML = merged.slice().reverse().map(t => `
+        <tr>
+          <td class="name-cell">${t.ticker}</td>
+          <td>${t.date}</td>
+          <td>${t.type}</td>
+          <td class="num">${t.qty}</td>
+          <td class="num">${fmt(t.buy)}</td>
+          <td class="num">${fmt(t.sell)}</td>
+          <td class="num ${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${t.pnl >= 0 ? '+' : ''}${fmt(t.pnl)}</td>
+          <td>${tagLabel(t.tag)}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  document.getElementById('log-btn').addEventListener('click', () => {
+    const ticker = document.getElementById('t-ticker').value.trim().toUpperCase();
+    const date = document.getElementById('t-date').value;
+    const type = document.getElementById('t-type').value;
+    const qty = parseFloat(document.getElementById('t-qty').value);
+    const buy = parseFloat(document.getElementById('t-buy').value);
+    const sell = parseFloat(document.getElementById('t-sell').value);
+    if (!ticker || !date || !qty || !buy || !sell) {
+      alert('Please fill in all fields before logging a trade.');
+      return;
+    }
+    trades.push({ ticker, date, type, qty, buy, sell });
+    save();
+    computeAndRender();
+    ['t-ticker','t-date','t-qty','t-buy','t-sell'].forEach(id => document.getElementById(id).value = '');
+  });
+
+  computeAndRender();
+})();
+</script>
+</body>
+</html>
