@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #14171c;
@@ -34,20 +35,17 @@
     line-height: 1.5;
   }
 
-  .wrap {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  header {
+    margin-bottom: 40px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
   }
 
-  /* Header + signature "keel line": stays flat when trading is disciplined,
-     tilts and shifts to amber as the tilt multiplier climbs. */
-  header { margin-bottom: 40px; }
-
   .brand { display: flex; align-items: baseline; gap: 10px; }
-
   h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-
   .tagline { color: var(--text-secondary); font-size: 13px; }
 
   .keel {
@@ -58,12 +56,21 @@
     transition: transform 1.2s ease, background 0.6s ease;
   }
 
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-bottom: 32px;
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .user-email { color: var(--text-muted); font-size: 12px; }
+
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
   }
+
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 32px; }
 
   .metric {
     background: var(--surface);
@@ -113,7 +120,7 @@
 
   input:focus, select:focus { outline: none; border-color: var(--accent); }
 
-  button {
+  button.primary {
     background: var(--accent);
     color: #0f1512;
     border: none;
@@ -125,7 +132,19 @@
     font-family: inherit;
   }
 
-  button:hover { opacity: 0.9; }
+  button.primary:hover { opacity: 0.9; }
+  button.primary:disabled { opacity: 0.5; cursor: default; }
+
+  button.secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
@@ -140,16 +159,9 @@
     border-bottom: 1px solid var(--border);
   }
 
-  td {
-    padding: 10px;
-    border-bottom: 1px solid var(--border);
-    font-family: 'IBM Plex Mono', monospace;
-  }
-
+  td { padding: 10px; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; }
   td.name-cell { font-family: 'IBM Plex Sans', sans-serif; }
-
   .num { text-align: right; }
-
   .pnl-pos { color: var(--accent); }
   .pnl-neg { color: var(--danger); }
 
@@ -165,19 +177,54 @@
   .tag-none { color: var(--text-muted); }
 
   .empty-state { text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px; }
-
   footer { margin-top: 40px; color: var(--text-muted); font-size: 11px; text-align: center; }
+
+  /* Auth screen */
+  #auth-screen { max-width: 380px; margin: 80px auto; text-align: center; }
+  #auth-screen .panel { text-align: left; }
+  #auth-screen h1 { text-align: center; }
+  #auth-screen .tagline { display: block; text-align: center; margin-bottom: 30px; }
+  .auth-field { margin-bottom: 10px; }
+  .auth-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .auth-actions button { flex: 1; }
+  .auth-message { font-size: 12px; margin-top: 12px; color: var(--text-secondary); min-height: 16px; }
+  .auth-message.error { color: var(--danger); }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- AUTH SCREEN -->
+<div class="wrap" id="auth-screen">
+  <h1>Even keel</h1>
+  <span class="tagline">a behavioral trading journal</span>
+  <div class="panel">
+    <p class="panel-title">Sign in or create an account</p>
+    <div class="auth-field"><input id="auth-email" type="email" placeholder="Email"></div>
+    <div class="auth-field"><input id="auth-password" type="password" placeholder="Password (min 6 characters)"></div>
+    <div class="auth-actions">
+      <button class="secondary" id="signup-btn">Sign up</button>
+      <button class="primary" id="signin-btn">Log in</button>
+    </div>
+    <div class="auth-message" id="auth-message"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="wrap hidden" id="app-screen">
 
   <header>
-    <div class="brand">
-      <h1>Even keel</h1>
-      <span class="tagline">— a behavioral trading journal</span>
+    <div>
+      <div class="brand">
+        <h1>Even keel</h1>
+        <span class="tagline">— a behavioral trading journal</span>
+      </div>
+      <div class="keel" id="keel-line"></div>
     </div>
-    <div class="keel" id="keel-line"></div>
+    <div style="text-align:right">
+      <div class="user-email" id="user-email"></div>
+      <button class="link-btn" id="logout-btn">Log out</button>
+    </div>
   </header>
 
   <section class="metrics">
@@ -212,7 +259,7 @@
       <input id="t-buy" type="number" placeholder="Buy $" min="0" step="0.01">
       <input id="t-sell" type="number" placeholder="Sell $" min="0" step="0.01">
     </div>
-    <button id="log-btn">Log trade</button>
+    <button class="primary" id="log-btn">Log trade</button>
   </section>
 
   <section class="panel">
@@ -230,19 +277,73 @@
     <div class="empty-state" id="empty-state">No trades yet — log your first one above.</div>
   </section>
 
-  <footer>Stored privately in this browser only — nothing leaves your device yet.</footer>
+  <footer>Saved to your account — accessible from any device you log in from.</footer>
 
 </div>
 
 <script>
 (function () {
-  const STORAGE_KEY = 'even-keel-trades';
-  let trades = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  // ---- Supabase setup ----
+  const SUPABASE_URL = 'https://qmozlhyuifhzgapowvpl.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_EswR8-_2rJdrM6lDB6YHcw_26vNNpy9';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const authScreen = document.getElementById('auth-screen');
+  const appScreen = document.getElementById('app-screen');
+  const authMessage = document.getElementById('auth-message');
+
+  let trades = [];
 
   const fmt = n => '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+  function showMessage(text, isError) {
+    authMessage.textContent = text;
+    authMessage.className = 'auth-message' + (isError ? ' error' : '');
+  }
+
+  // ---- Auth actions ----
+  document.getElementById('signup-btn').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    if (!email || password.length < 6) { showMessage('Enter an email and a password of at least 6 characters.', true); return; }
+    const { error } = await sb.auth.signUp({ email, password });
+    if (error) { showMessage(error.message, true); return; }
+    showMessage('Account created. Check your email for a confirmation link, then log in.');
+  });
+
+  document.getElementById('signin-btn').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    if (!email || !password) { showMessage('Enter your email and password.', true); return; }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { showMessage(error.message, true); return; }
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+  });
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session && session.user) {
+      authScreen.classList.add('hidden');
+      appScreen.classList.remove('hidden');
+      document.getElementById('user-email').textContent = session.user.email;
+      loadTrades();
+    } else {
+      appScreen.classList.add('hidden');
+      authScreen.classList.remove('hidden');
+    }
+  });
+
+  // ---- Trade data ----
+  async function loadTrades() {
+    const { data, error } = await sb.from('trades').select('*').order('trade_date', { ascending: true });
+    if (error) { alert('Could not load trades: ' + error.message); return; }
+    trades = data.map(r => ({
+      ticker: r.ticker, date: r.trade_date, type: r.trade_type,
+      qty: r.qty, buy: r.buy_price, sell: r.sell_price
+    }));
+    computeAndRender();
   }
 
   function tagLabel(tag) {
@@ -318,7 +419,7 @@
     }
   }
 
-  document.getElementById('log-btn').addEventListener('click', () => {
+  document.getElementById('log-btn').addEventListener('click', async () => {
     const ticker = document.getElementById('t-ticker').value.trim().toUpperCase();
     const date = document.getElementById('t-date').value;
     const type = document.getElementById('t-type').value;
@@ -329,13 +430,16 @@
       alert('Please fill in all fields before logging a trade.');
       return;
     }
-    trades.push({ ticker, date, type, qty, buy, sell });
-    save();
-    computeAndRender();
+    const btn = document.getElementById('log-btn');
+    btn.disabled = true;
+    const { error } = await sb.from('trades').insert({
+      ticker, trade_date: date, trade_type: type, qty, buy_price: buy, sell_price: sell
+    });
+    btn.disabled = false;
+    if (error) { alert('Could not save trade: ' + error.message); return; }
     ['t-ticker','t-date','t-qty','t-buy','t-sell'].forEach(id => document.getElementById(id).value = '');
+    loadTrades();
   });
-
-  computeAndRender();
 })();
 </script>
 </body>
